@@ -2,19 +2,57 @@
     import { Product } from '../model/productModel';
 import { Request, Response } from 'express';
 
+interface queryString {
+    [key: string]: string | number | boolean; // Adatta questa interfaccia ai tuoi dati
+}
+
+class APIProduct {
+ // in ts dobbiamo dichiarare le variabili prima di utilizzarle
+   // query: any;
+    // queryBody: any;
+
+// secondo metodo è di usare le proprietà di incapsulamento (public, private o protected)
+    constructor(public query: any, public queryString: any) {
+        this.query = query;
+        this.queryString = queryString;
+    }
+
+    filter() {
+        const queryBody: queryString = { ...this.queryString };
+        const excludeFields: string[] = ['page', 'sort', 'limit', 'fields'];
+
+        excludeFields.forEach(el => delete queryBody[el]);
+
+        let queryStr: string = JSON.stringify(queryBody);
+        queryStr = queryStr.replace(/\b(gte|gt|lt|lte)\b/g, match => `$${match}`);
+
+        this.query.find(JSON.parse(queryStr));
+
+        return this;
+    }
+
+
+}
+
 const getAllProducts = async (req: Request, res: Response) => {
     try {
-        const products = await Product.find();
+        const apiProduct = new APIProduct(Product.find(), req.query)
+            .filter();
+        
+        const products = await apiProduct.query;
+
         res.status(200).json({
             status: 'success',
-            data: products
+            data: {
+                products
+            },
         });
-    } catch(error: any) {
-        res.status(500).json({
+    } catch (error: any) {
+        res.status(404).json({
             status: 'fail',
-            message: error
+            message: error.message,
         });
-    };
+    }
 };
 
 
